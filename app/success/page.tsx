@@ -5,7 +5,7 @@ interface SuccessPageProps {
 }
 
 export default async function SuccessPage({ searchParams }: SuccessPageProps) {
-  // ✅ 1) Promise unwrap
+  // ✅ unwrap the search params
   const { session_id } = await searchParams;
 
   if (!session_id) {
@@ -18,7 +18,7 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
     );
   }
 
-  // (optional) Stripe call – keep only if you really need it
+  // Retrieve Stripe session if needed
   const session = await stripe.checkout.sessions.retrieve(session_id);
 
   return (
@@ -30,11 +30,14 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
         <p className="mt-2 text-lg text-gray-600">
           Thank you! Your payment is confirmed.
         </p>
-        <p className="mt-4 text-sm ">
+        <p className="mt-4 text-sm">
           Payment session ID:
           <span className="font-mono text-green-500 block mt-1">
             {session_id}
           </span>
+        </p>
+        <p className="mt-2 text-sm text-gray-600">
+          Customer email: {session?.customer_email || "N/A"}
         </p>
         <a
           href="/"

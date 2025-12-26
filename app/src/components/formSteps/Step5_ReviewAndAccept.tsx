@@ -8,7 +8,6 @@ interface FormData {
   selectedDates: string[];
   email: string;
   acceptTerms: boolean;
-  // Include other necessary fields from your form
 }
 
 interface Step5Props {
@@ -17,7 +16,6 @@ interface Step5Props {
   formData: FormData; // Use the defined type
 }
 
-// Helper to format the list of dates for display
 const formatDates = (dates: string[]): string => {
   if (!dates || dates.length === 0) {
     return "No dates selected";
