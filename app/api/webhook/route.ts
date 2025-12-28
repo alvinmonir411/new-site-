@@ -1,90 +1,58 @@
-// app/api/webhook/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { stripe } from "@/app/lib/stripe";
+import { connectToDatabase } from "@/app/lib/mongodb";
 import Stripe from "stripe";
 
-import { ObjectId } from "mongodb";
-import { connectToDatabase } from "@/app/lib/mongodb";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-12-15.clover" as const,
-  typescript: true,
-});
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-
-// Configuration for reading the raw body
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-// Helper function to read the raw body buffer (Fixed to prevent ts(2504) error)
-async function buffer(readable: ReadableStream<Uint8Array> | null) {
-  const chunks: Buffer[] = [];
-
-  if (readable) {
-    for await (const chunk of readable as any) {
-      // Type cast to any for async iterator compatibility
-      chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-    }
-  }
-  return Buffer.concat(chunks);
-}
-
-export async function POST(req: NextRequest) {
-  const rawBody = await buffer(req.body as ReadableStream<Uint8Array>);
-  const sig = req.headers.get("stripe-signature");
-
-  if (!sig) {
-    return new NextResponse("Missing Stripe signature", { status: 400 });
-  }
+export async function POST(req: Request) {
+  const body = await req.text();
+  const signature = (await headers()).get("Stripe-Signature") as string;
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
-  } catch (err: any) {
-    console.log(`❌ Webhook Error: ${err.message}`);
-    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+  } catch (error: any) {
+    console.error("Webhook signature verification failed:", error.message);
+    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
   }
 
-  await connectToDatabase();
-  const { db } = await connectToDatabase();
+  const session = event.data.object as Stripe.Checkout.Session;
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const orderDbId = session.metadata?.orderDbId;
+    // 1. Connect to MongoDB
+    const { db } = await connectToDatabase();
 
-    if (!orderDbId) {
-      return new NextResponse("Missing orderDbId in metadata", { status: 400 });
-    }
+    // 2. Extract needed data from metadata & session
+    const customerEmail = session.customer_details?.email || session.customer_email;
+    const amountTotal = (session.amount_total || 0) / 100; // Convert cents to pounds
+
+    const orderData = {
+      stripeSessionId: session.id,
+      regNo: session.metadata?.registrationNumber,
+      cleanAirZone: session.metadata?.cleanAirZone,
+      total: amountTotal.toFixed(2),
+      status: "PAID",
+      email: customerEmail,
+      createdAt: new Date().toISOString(),
+      currency: session.currency,
+      dates: [new Date().toISOString().substring(0, 10)], // Defaulting to today as date isn't in metadata
+    };
+
+    console.log("Saving order to DB:", orderData);
 
     try {
-      const newStatus = session.payment_status === "paid" ? "PAID" : "FAILED";
-
-      const updateResult = await db.collection("orders").updateOne(
-        { _id: new ObjectId(orderDbId) },
-        {
-          $set: {
-            orderStatus: newStatus,
-            stripePaymentId: session.id,
-            updatedAt: new Date(),
-          },
-        }
-      );
-
-      if (updateResult.matchedCount === 0) {
-        console.error(`Order not found for DB ID: ${orderDbId}`);
-      }
-
-      // 📧 Email Sending Logic goes here (e.g., using Resend or Nodemailer)
-    } catch (updateError) {
-      console.error("Error updating DB:", updateError);
-      return new NextResponse("Internal Server Error while updating DB", {
-        status: 500,
-      });
+      await db.collection("orders").insertOne(orderData);
+      console.log("Order saved successfully.");
+    } catch (dbError) {
+      console.error("Database insertion failed:", dbError);
+      return new NextResponse("Database Error", { status: 500 });
     }
   }
 
-  return NextResponse.json({ received: true }, { status: 200 });
+  return new NextResponse(null, { status: 200 });
 }

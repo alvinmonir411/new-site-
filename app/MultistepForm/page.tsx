@@ -15,7 +15,7 @@ const defaultValues = {
   registrationLocation: "UK",
   vehicleType: "Car",
   cleanAirZone: "Bristol",
-  paymentDate: new Date().toISOString().substring(0, 10),
+  paymentDate: "", // Date initialized in useEffect to avoid hydration mismatch
   email: "",
   acceptTerms: false,
   country: "UK", // ✅ Changed to UK for consistency
@@ -32,6 +32,11 @@ const MultiStepForm = () => {
     defaultValues,
     mode: "onBlur",
   });
+
+  // Fix hydration mismatch for date
+  React.useEffect(() => {
+    methods.setValue("paymentDate", new Date().toISOString().substring(0, 10));
+  }, [methods]);
 
   const formData = methods.watch();
 
@@ -57,7 +62,10 @@ const MultiStepForm = () => {
     });
 
     try {
-      await createCheckoutSession(formDataToSend);
+      const result = await createCheckoutSession(formDataToSend);
+      if (result?.url) {
+        window.location.href = result.url;
+      }
     } catch (error) {
       console.error("Checkout failed:", error);
       setLoading(false);

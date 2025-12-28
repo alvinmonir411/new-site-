@@ -35,5 +35,5 @@ export async function createCheckoutSession(formData: FormData) {
     throw new Error("Failed to create checkout session");
   }
 
-  redirect(session.url);
+  return { url: session.url };
 }

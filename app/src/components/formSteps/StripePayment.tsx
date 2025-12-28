@@ -11,9 +11,14 @@ import {
 // Define the expected shape of the form data
 interface FormData {
   registrationNumber: string;
-  // Add all other fields you need for the server/metadata
+  acceptTerms: boolean;
   cleanAirZone: string;
-  // ...
+  country: string;
+  email: string;
+  paymentDate: string;
+  registrationLocation: string;
+  selectedDates: any;
+  vehicleType: string;
 }
 
 interface StripePaymentProps {
@@ -24,13 +29,12 @@ interface StripePaymentProps {
 
 // Helper function to calculate cost based on form data (PLACE YOUR REAL LOGIC HERE)
 const calculateCost = (data: FormData): number => {
-  // Example logic: £10.00 for Bristol, £8.00 otherwise.
   let amountInCents = 0;
 
   if (data.cleanAirZone === "Bristol") {
-    amountInCents = 1000; 
+    amountInCents = 1000;
   } else {
-    amountInCents = 800; 
+    amountInCents = 800;
   }
 
   return amountInCents;
@@ -63,7 +67,13 @@ export default function StripePayment({
             metadata: {
               registration: formData.registrationNumber,
               zone: formData.cleanAirZone,
-              // Pass all necessary form data for secure record keeping
+              acceptTerms: formData.acceptTerms,
+              country: formData.country,
+              email: formData.email,
+              paymentDate: formData.paymentDate,
+              registrationLocation: formData.registrationLocation,
+              selectedDates: formData.selectedDates,
+              vehicleType: formData.vehicleType,
             },
           }),
         });
@@ -83,6 +93,7 @@ export default function StripePayment({
         setError("Could not initialize payment. Please try again.");
       } finally {
         setIsLoading(false);
+        console.log("form", formData);
       }
     };
 
@@ -93,9 +104,7 @@ export default function StripePayment({
       setIsLoading(false);
       setError("This vehicle may be exempt, please review step 5.");
     }
-  }, [amountInCents, formData]); // Dependencies ensure this runs when cost or data changes
-
-  // 2. Handle form submission (Confirm the payment)
+  }, [amountInCents, formData]);
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 

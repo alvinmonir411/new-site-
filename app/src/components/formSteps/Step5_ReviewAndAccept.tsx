@@ -47,7 +47,7 @@ const Step5_ReviewAndAccept: React.FC<Step5Props> = ({
   const totalAmount = 14.0;
 
   const onSubmit = () => {
-    // Submit button here acts as 'Next' to go to payment step (Step 6)
+    console.log(formData);
     onNext();
   };
 

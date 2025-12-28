@@ -1,32 +1,36 @@
-// app/admin/api/orders/route.ts
-import { connectToDatabase } from "@/app/lib/mongodb";
 import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/app/lib/mongodb";
 
-// NOTE: Add strong authentication (e.g., NextAuth.js) here in a real application!
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
-  const { db } = await connectToDatabase();
-
   try {
+    const { db } = await connectToDatabase();
+
+    // Fetch orders, newest first
     const orders = await db
       .collection("orders")
       .find({})
       .sort({ createdAt: -1 })
       .toArray();
 
-    // JSON-এর জন্য ObjectId কে string-এ রূপান্তর করে safe ডেটা তৈরি করুন
-    const safeOrders = orders.map((order) => ({
-      id: order._id.toHexString(),
-      regNo: order.registrationNumber,
-      total: (order.totalAmount / 100).toFixed(2), // Cents to currency
-      status: order.orderStatus,
-      dates: order.selectedDates,
-      email: order.customerEmail,
-      createdAt: order.createdAt,
+    // Transform _id to string if needed, or just return as is
+    const formattedOrders = orders.map(order => ({
+      id: order._id.toString(),
+      regNo: order.regNo || "N/A",
+      total: order.total || "0.00",
+      status: order.status || "PENDING",
+      dates: order.dates || [],
+      email: order.email || "",
+      createdAt: order.createdAt || new Date().toISOString(),
     }));
 
-    return NextResponse.json(safeOrders);
+    return NextResponse.json(formattedOrders);
   } catch (error) {
-    console.error("Error fetching orders:", error);
-    return new NextResponse("Failed to fetch orders", { status: 500 });
+    console.error("Failed to fetch orders:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch orders" },
+      { status: 500 }
+    );
   }
 }
