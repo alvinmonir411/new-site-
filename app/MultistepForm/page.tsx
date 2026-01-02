@@ -47,7 +47,7 @@ const MultiStepForm = () => {
   const methods = useForm<CheckoutFormData>({
     defaultValues,
     mode: "onBlur",
-  }); /* FIX HYDRATION ISSUE */
+  });
 
   useEffect(() => {
     methods.setValue("paymentDate", new Date().toISOString().substring(0, 10));
@@ -61,7 +61,7 @@ const MultiStepForm = () => {
 
   const handleBack = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
-  }; // onSubmit ফাংশনটি এখন Step5_ReviewAndAccept থেকে কল করা হবে
+  };
 
   const onSubmit = async (data: CheckoutFormData) => {
     if (!data.acceptTerms) {
@@ -98,7 +98,6 @@ const MultiStepForm = () => {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("canceled") === "true") {
         setCanceled(true);
-        // যদি ক্যান্সেল হয়, তবে স্টেপ 5 (রিভিউ) তে ফিরে যাওয়া ভালো
         setCurrentStep(5);
       }
     }
@@ -108,11 +107,10 @@ const MultiStepForm = () => {
     if (canceled) {
       return (
         <div className="p-10 text-center">
-                   {" "}
           <h2 className="text-2xl font-bold text-red-600 mb-4">
-                        Payment Canceled          {" "}
+            Payment Canceled
           </h2>
-                   {" "}
+
           <button
             onClick={() => {
               setCanceled(false);
@@ -120,9 +118,8 @@ const MultiStepForm = () => {
             }}
             className="bg-[#00b875] text-white px-8 py-3 rounded-lg"
           >
-                        Try Again          {" "}
+            Try Again
           </button>
-                 {" "}
         </div>
       );
     }

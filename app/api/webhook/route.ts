@@ -1,58 +1,44 @@
-import { headers } from "next/headers";
+import Stripe from "stripe";
+import clientPromise from "@/app/lib/mongodb";
 import { NextResponse } from "next/server";
 import { stripe } from "@/app/lib/stripe";
-import { connectToDatabase } from "@/app/lib/mongodb";
-import Stripe from "stripe";
+import { ObjectId } from "mongodb";
 
 export async function POST(req: Request) {
   const body = await req.text();
-  const signature = (await headers()).get("Stripe-Signature") as string;
+  const sig = req.headers.get("stripe-signature")!;
+  const secret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+  console.log("sig:", sig);
+  console.log("secret:", secret);
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
-  } catch (error: any) {
-    console.error("Webhook signature verification failed:", error.message);
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+    event = stripe.webhooks.constructEvent(body, sig, secret);
+  } catch (err) {
+    console.log(err);
+    return NextResponse.json({ error: "Webhook error" }, { status: 400 });
   }
-
-  const session = event.data.object as Stripe.Checkout.Session;
 
   if (event.type === "checkout.session.completed") {
-    // 1. Connect to MongoDB
-    const { db } = await connectToDatabase();
-
-    // 2. Extract needed data from metadata & session
-    const customerEmail = session.customer_details?.email || session.customer_email;
-    const amountTotal = (session.amount_total || 0) / 100; // Convert cents to pounds
-
-    const orderData = {
-      stripeSessionId: session.id,
-      regNo: session.metadata?.registrationNumber,
-      cleanAirZone: session.metadata?.cleanAirZone,
-      total: amountTotal.toFixed(2),
-      status: "PAID",
-      email: customerEmail,
-      createdAt: new Date().toISOString(),
-      currency: session.currency,
-      dates: [new Date().toISOString().substring(0, 10)], // Defaulting to today as date isn't in metadata
-    };
-
-    console.log("Saving order to DB:", orderData);
-
-    try {
-      await db.collection("orders").insertOne(orderData);
-      console.log("Order saved successfully.");
-    } catch (dbError) {
-      console.error("Database insertion failed:", dbError);
-      return new NextResponse("Database Error", { status: 500 });
+    const session = event.data.object as Stripe.Checkout.Session;
+    const paymentId = session?.metadata?.paymentId;
+    console.log(paymentId);
+    if (!paymentId) {
+      console.error("No paymentId in metadata");
+      return NextResponse.json({ received: false });
     }
+    // Update MongoDB
+    const client = await clientPromise;
+    const db = client.db("MONGODB_DB");
+    await db
+      .collection("payments")
+      .updateOne(
+        { _id: new ObjectId(paymentId) },
+        { $set: { status: "paid", paidAt: new Date() } }
+      );
   }
 
-  return new NextResponse(null, { status: 200 });
+  return NextResponse.json({ received: true });
 }

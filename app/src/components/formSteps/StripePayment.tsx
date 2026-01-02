@@ -27,17 +27,13 @@ interface StripePaymentProps {
   formData: FormData;
 }
 
-// Helper function to calculate cost based on form data (PLACE YOUR REAL LOGIC HERE)
+const PRICE_PER_DAY_PENCE = 1400;
 const calculateCost = (data: FormData): number => {
-  let amountInCents = 0;
+  const datesCount = Array.isArray(data.selectedDates)
+    ? data.selectedDates.length
+    : 0;
 
-  if (data.cleanAirZone === "Bristol") {
-    amountInCents = 1000;
-  } else {
-    amountInCents = 800;
-  }
-
-  return amountInCents;
+  return datesCount * PRICE_PER_DAY_PENCE;
 };
 
 export default function StripePayment({
@@ -59,7 +55,7 @@ export default function StripePayment({
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/create-payment-intent", {
+        const response = await fetch("/api/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -100,7 +96,6 @@ export default function StripePayment({
     if (amountInCents > 0) {
       fetchClientSecret();
     } else {
-      // Handle case where no payment is needed (e.g., exempt vehicle)
       setIsLoading(false);
       setError("This vehicle may be exempt, please review step 5.");
     }
@@ -132,10 +127,6 @@ export default function StripePayment({
       setError(paymentError.message || "Payment failed.");
       setIsLoading(false);
     } else {
-      // Payment succeeded! The PaymentIntent is complete.
-      // Note: For true production readiness, you should rely on a Stripe Webhook
-      // for order fulfillment, but this client-side confirmation is fine for simple forms.
-      // Call the success handler.
       onFinalSubmit();
     }
     setIsLoading(false);
