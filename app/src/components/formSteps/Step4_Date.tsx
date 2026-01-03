@@ -71,7 +71,7 @@ const Step4_Date: React.FC<Step4Props> = ({ onNext, onBack }) => {
   // Date toggle logic
   const toggleDate = useCallback(
     (date: Date) => {
-      const dateString = format(date, "yyyy-MM-dd");
+      const dateString = format(date, "dd-MM-yyyy");
       const isSelected = selectedDates.includes(dateString);
 
       if (isSelected) {

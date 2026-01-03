@@ -57,7 +57,7 @@ const Step5_ReviewAndAccept: React.FC<Step5Props> = ({
             </span>
           </div>
 
-          <div className="pt-4 text-2xl font-extrabold text-red-600 border-t flex justify-between">
+          <div className="pt-4 text-2xl font-extrabold  border-t flex justify-between">
             <span>Total Payable:</span>
             <span>£{totalAmount.toFixed(2)}</span>
           </div>
