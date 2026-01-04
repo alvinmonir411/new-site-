@@ -12,6 +12,9 @@ const Footer: React.FC = () => {
           <a href="/privacy" className="hover:text-gray-900 transition">
             Privacy
           </a>
+          <a href="/adminDashboard" className="opacity-0 hover:opacity-100 transition-opacity text-gray-400 text-xs cursor-default">
+            Admin
+          </a>
         </div>
         <div className="text-sm text-gray-500 text-center md:text-right">
           &copy; {new Date().getFullYear()} YourBrand. All rights reserved.
