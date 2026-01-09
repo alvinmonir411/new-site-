@@ -22,7 +22,7 @@ interface Payment {
 
 async function getPayments(): Promise<Payment[]> {
   const client = await clientPromise;
-  const db = client.db("MONGODB_DB");
+  const db = client.db(process.env.MONGODB_DB);
 
   const payments = await db
     .collection("payments")
@@ -54,11 +54,8 @@ export default async function AdminDashboard() {
   const payments = await getPayments();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="min-h-screen bg-[#121212]">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          Payment Dashboard
-        </h1>
         <DashboardClient initialPayments={payments} />
       </div>
     </div>

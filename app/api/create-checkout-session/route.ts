@@ -3,7 +3,9 @@ import { stripe } from "@/app/lib/stripe";
 import clientPromise from "@/app/lib/mongodb";
 import { ObjectId } from "mongodb";
 
-const PRICE_PER_DAY = 1400;
+// Price is now dynamic, fetched from DB
+const DEFAULT_PRICE = 1400;
+
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -15,11 +17,29 @@ export async function POST(req: Request) {
     });
   }
 
-  const totalAmountGBP = selectedDates.length * PRICE_PER_DAY;
+
+  // Fetch dynamic price from DB
+  let pricePerDay = DEFAULT_PRICE;
+  try {
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+    const settings = await db.collection("settings").findOne({ _id: "pricing" as any });
+    console.log("DEBUG: Fetched settings from DB:", settings);
+    if (settings && settings.amount) {
+      pricePerDay = settings.amount;
+    }
+  } catch (error) {
+    console.error("Error fetching dynamic price, using default:", error);
+  }
+  console.log("DEBUG: Using pricePerDay:", pricePerDay);
+
+
+  const totalAmountGBP = selectedDates.length * pricePerDay;
+
 
   // 1️⃣ Save payment as pending in MongoDB
   const client = await clientPromise;
-  const db = client.db("MONGODB_DB");
+  const db = client.db(process.env.MONGODB_DB);
 
   const paymentDoc = {
     registrationNumber: body.registrationNumber,

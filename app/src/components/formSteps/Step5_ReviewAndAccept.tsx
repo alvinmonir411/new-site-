@@ -10,13 +10,27 @@ interface Step5Props {
   loading: boolean;
 }
 
-const PRICE_PER_DAY = 14;
+/* const PRICE_PER_DAY = 14; */
+/* const PRICE_PER_DAY = 14; */
 
 const Step5_ReviewAndAccept: React.FC<Step5Props> = ({
   onBack,
   onSubmit,
   loading,
 }) => {
+  const [pricePerDay, setPricePerDay] = React.useState(14);
+
+  React.useEffect(() => {
+    fetch("/api/settings/price")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.amount) {
+          setPricePerDay(data.amount / 100); // Convert pence to pounds
+        }
+      })
+      .catch((err) => console.error("Failed to load price:", err));
+  }, []);
+
   const {
     watch,
     register,
@@ -26,7 +40,7 @@ const Step5_ReviewAndAccept: React.FC<Step5Props> = ({
   const formData = watch();
 
   const totalDays = formData.selectedDates?.length || 0;
-  const totalAmount = totalDays * PRICE_PER_DAY;
+  const totalAmount = totalDays * pricePerDay;
   console.log(totalDays, totalAmount);
 
   return (

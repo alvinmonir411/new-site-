@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
     try {
       const client = await clientPromise;
-      const db = client.db("MONGODB_DB");
+      const db = client.db(process.env.MONGODB_DB);
 
       const result = await db.collection("payments").updateOne(
         { _id: new ObjectId(paymentId) },

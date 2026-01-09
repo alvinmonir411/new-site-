@@ -8,7 +8,7 @@ export async function GET() {
 
         // Sort by createdAt descending (newest first)
         const payments = await db
-            .collection("orders")
+            .collection("payments")
             .find({})
             .sort({ createdAt: -1 })
             .toArray();

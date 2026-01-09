@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   useStripe,
   useElements,
   PaymentElement,
-  Elements, // Import Elements if you want to use it here, but it's passed from app/page.js
 } from "@stripe/react-stripe-js";
 
 // Define the expected shape of the form data
@@ -27,13 +26,12 @@ interface StripePaymentProps {
   formData: FormData;
 }
 
-const PRICE_PER_DAY_PENCE = 1400;
-const calculateCost = (data: FormData): number => {
+const calculateCost = (data: FormData, price: number): number => {
   const datesCount = Array.isArray(data.selectedDates)
     ? data.selectedDates.length
     : 0;
 
-  return datesCount * PRICE_PER_DAY_PENCE;
+  return datesCount * price;
 };
 
 export default function StripePayment({
@@ -46,8 +44,27 @@ export default function StripePayment({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pricePerDayPence, setPricePerDayPence] = useState<number>(1400); // Default 1400
 
-  const amountInCents = calculateCost(formData);
+  const amountInCents = calculateCost(formData, pricePerDayPence);
+
+  // Fetch dynamic price
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch("/api/settings/price");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.amount) {
+            setPricePerDayPence(data.amount);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch price:", error);
+      }
+    };
+    fetchPrice();
+  }, []);
 
   // 1. Fetch the Client Secret from the server
   useEffect(() => {
@@ -94,12 +111,21 @@ export default function StripePayment({
     };
 
     if (amountInCents > 0) {
-      fetchClientSecret();
+      if (pricePerDayPence !== 1400) {
+        // If price has updated from default, existing amountInCents change will trigger.
+        // This logic might loop if not careful, but amountInCents depends on pricePerDayPence.
+        // When pricePerDayPence updates -> amountInCents updates -> useEffect triggers -> fetches client secret.
+        // This is correct behavior.
+        fetchClientSecret();
+      } else {
+        fetchClientSecret();
+      }
     } else {
       setIsLoading(false);
       setError("This vehicle may be exempt, please review step 5.");
     }
-  }, [amountInCents, formData]);
+  }, [amountInCents, formData, pricePerDayPence]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -143,11 +169,11 @@ export default function StripePayment({
   return (
     <form onSubmit={handleSubmit} className="p-8 space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">
-        Payment: ${(amountInCents / 100).toFixed(2)} USD
+        Payment: £{(amountInCents / 100).toFixed(2)}
       </h2>
       <p className="text-sm text-gray-600">
-        Vehicle: **{formData.registrationNumber}** for **{formData.cleanAirZone}
-        **
+        Vehicle: <strong>{formData.registrationNumber}</strong> for <strong>{formData.cleanAirZone}
+        </strong>
       </p>
 
       {/* The PaymentElement renders the card/bank info inputs */}
@@ -175,11 +201,9 @@ export default function StripePayment({
         >
           {isLoading
             ? "Processing..."
-            : `Pay $${(amountInCents / 100).toFixed(2)}`}
+            : `Pay £${(amountInCents / 100).toFixed(2)}`}
         </button>
       </div>
     </form>
   );
 }
-
-// **Important:** This component relies on being wrapped in <Elements> in app/page.js
