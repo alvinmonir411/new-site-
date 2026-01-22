@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import SelectDaysPage from "../src/components/SelectDaysPage";
 
 export default function VehicleDetailsPage() {
   const [step, setStep] = useState(0);
@@ -106,7 +105,7 @@ export default function VehicleDetailsPage() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <SelectDaysPage />
+
           </div>
         )}
 

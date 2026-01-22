@@ -103,6 +103,38 @@ const MultiStepForm = () => {
     }
   }, []);
 
+  // Sync state to URL whenever formData changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+
+    // Helper to update specific keys
+    const updateParam = (key: string, value: any) => {
+      if (value && value.toString().length > 0) {
+        if (Array.isArray(value)) {
+          if (value.length > 0) params.set(key, value.join(","));
+          else params.delete(key);
+        } else {
+          params.set(key, String(value));
+        }
+      } else {
+        params.delete(key);
+      }
+    };
+
+    updateParam("registrationNumber", formData.registrationNumber);
+    updateParam("vehicleType", formData.vehicleType);
+    updateParam("cleanAirZone", formData.cleanAirZone);
+    updateParam("selectedDates", formData.selectedDates);
+    // We don't necessarily need to sync email or sensitive info to URL if not needed, 
+    // but user asked for "value that user selected", so we sync major fields.
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+
+  }, [formData]);
+
   const renderStep = () => {
     if (canceled) {
       return (
@@ -149,12 +181,12 @@ const MultiStepForm = () => {
 
   return (
     <div className="flex justify-center min-h-screen bg-gray-50 pt-10">
-           {" "}
+      {" "}
       <div className="w-full max-w-4xl bg-white rounded-xl shadow">
-                <Stepper currentStep={currentStep} />       {" "}
+        <Stepper currentStep={currentStep} />       {" "}
         <FormProvider {...methods}>{renderStep()}</FormProvider>     {" "}
       </div>
-         {" "}
+      {" "}
     </div>
   );
 };

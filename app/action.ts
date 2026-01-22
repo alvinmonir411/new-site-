@@ -47,31 +47,44 @@ export async function createCheckoutSession(formData: FormData) {
 
   const result = await db.collection("payments").insertOne(paymentDoc);
 
-  // 2️⃣ Create Stripe Checkout Session
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: "gbp",
-          product_data: {
-            name: `Clean Air Zone Charge - ${data.cleanAirZone}`,
-          },
-          unit_amount: totalAmountPounds,
-        },
-        quantity: 1,
-      },
-    ],
-    customer_email: data.email as string,
-    metadata: {
-      paymentId: result.insertedId.toString(),
-    },
-    success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/?canceled=true`,
-  });
+  // 2️⃣ Validation: Check Base URL
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  if (!baseUrl) {
+    console.error("❌ Missing NEXT_PUBLIC_BASE_URL in environment variables.");
+    throw new Error("Server configuration error: Missing Base URL");
+  }
 
-  // 3️⃣ Update DB with Stripe Session ID
+  // 3️⃣ Create Stripe Checkout Session
+  let session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "gbp",
+            product_data: {
+              name: `Clean Air Zone Charge - ${data.cleanAirZone}`,
+            },
+            unit_amount: Math.round(totalAmountPounds), // Ensure integer
+          },
+          quantity: 1,
+        },
+      ],
+      customer_email: data.email as string,
+      metadata: {
+        paymentId: result.insertedId.toString(),
+      },
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/?canceled=true`,
+    });
+  } catch (stripeError: any) {
+    console.error("❌ Stripe Session Creation Failed:", stripeError.message);
+    throw new Error(`Payment service unavailable: ${stripeError.message}`);
+  }
+
+  // 4️⃣ Update DB with Stripe Session ID
   await db.collection("payments").updateOne(
     { _id: result.insertedId },
     {

@@ -130,7 +130,7 @@ const Step4_Date: React.FC<Step4Props> = ({ onNext, onBack }) => {
   const renderCells = () => (
     <div className="grid grid-cols-7 gap-1">
       {calendarDays.map((day, index) => {
-        const dateString = format(day, "yyyy-MM-dd");
+        const dateString = format(day, "dd-MM-yyyy");
         const isSelected = selectedDates.includes(dateString);
         const isCurrentMonth = isSameMonth(day, currentMonth);
 
@@ -141,11 +141,11 @@ const Step4_Date: React.FC<Step4Props> = ({ onNext, onBack }) => {
           classes += " text-gray-300 pointer-events-none";
         } else if (isSelected) {
           classes +=
-            " bg-[#00b875] text-white shadow-md cursor-pointer hover:bg-[#009b61]";
+            " bg-[#00b875] text-white shadow-md cursor-pointer hover:bg-[#009b61] ring-2 ring-offset-2 ring-[#00b875] font-bold";
         } else if (selectedDates.length >= MAX_DATES) {
           classes += " bg-white text-gray-800 opacity-60 cursor-not-allowed";
         } else {
-          classes += " bg-white hover:bg-gray-100 text-gray-800 cursor-pointer";
+          classes += " bg-white hover:bg-gray-100 text-gray-800 cursor-pointer border border-gray-100";
         }
 
         const isDisabled =
